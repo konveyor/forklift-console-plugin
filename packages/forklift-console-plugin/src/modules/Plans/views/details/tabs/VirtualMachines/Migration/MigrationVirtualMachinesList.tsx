@@ -33,12 +33,12 @@ const vmStatuses = [
   { id: 'Unknown', label: 'Unknown' },
 ];
 
-const getVMMigrationStatus = (obj: VMData) => {
-  const isError = obj.statusVM?.conditions?.find((c) => c.type === 'Failed' && c.status === 'True');
-  const isSuccess = obj.statusVM?.conditions?.find(
+export const getVMMigrationStatus = (statusVM: V1beta1PlanStatusMigrationVms) => {
+  const isError = statusVM?.conditions?.find((c) => c.type === 'Failed' && c.status === 'True');
+  const isSuccess = statusVM?.conditions?.find(
     (c) => c.type === 'Succeeded' && c.status === 'True',
   );
-  const isRunning = obj.statusVM?.completed === undefined;
+  const isRunning = statusVM?.completed === undefined;
 
   if (isError) {
     return 'Failed';

@@ -1,8 +1,10 @@
 import React, { FC } from 'react';
+import { StandardPage } from 'src/components/page/StandardPage';
 import {
   GlobalActionWithSelection,
   StandardPageWithSelection,
 } from 'src/components/page/StandardPageWithSelection';
+import { getPlanPhase, PlanPhase } from 'src/modules/Plans/utils';
 import { useForkliftTranslation } from 'src/utils/i18n';
 
 import { loadUserSettings, ResourceFieldFactory } from '@kubev2v/common';
@@ -12,7 +14,7 @@ import {
   V1beta1PlanStatusMigrationVms,
 } from '@kubev2v/types';
 
-import { PlanVMsDeleteButton } from '../components';
+import { PlanVMsDeleteButton, PlanVMsEditButton } from '../components';
 import { PlanData, VMData } from '../types';
 
 import { PlanVirtualMachinesRow } from './PlanVirtualMachinesRow';
@@ -40,9 +42,6 @@ const fieldsMetadataFactory: ResourceFieldFactory = (t) => [
     sortable: true,
   },
 ];
-
-const PageWithSelection = StandardPageWithSelection<VMData>;
-type PageGlobalActions = FC<GlobalActionWithSelection<VMData>>[];
 
 export const PlanVirtualMachinesList: FC<{ obj: PlanData }> = ({ obj }) => {
   const { t } = useForkliftTranslation();
@@ -84,24 +83,36 @@ export const PlanVirtualMachinesList: FC<{ obj: PlanData }> = ({ obj }) => {
   const onSelect = () => undefined;
   const initialSelectedIds = [];
 
-  const actions: PageGlobalActions = [
-    ({ selectedIds }) => <PlanVMsDeleteButton selectedIds={selectedIds || []} plan={plan} />,
-  ];
+  const phase = getPlanPhase({ obj: plan });
+  type PageGlobalActions = FC<GlobalActionWithSelection<VMData>>[];
 
-  return (
-    <PageWithSelection
-      title={t('Virtual Machines')}
-      dataSource={vmDataSource}
-      CellMapper={PlanVirtualMachinesRow}
-      fieldsMetadata={fieldsMetadataFactory(t)}
-      userSettings={userSettings}
-      namespace={''}
-      page={1}
-      toId={vmDataToId}
+  const commonProps = {
+    title: t('Virtual Machines'),
+    dataSource: vmDataSource,
+    CellMapper: PlanVirtualMachinesRow,
+    fieldsMetadata: fieldsMetadataFactory(t),
+    userSettings: userSettings,
+    namespace: '',
+    page: 1,
+    toId: vmDataToId,
+  };
+
+  return phase === PlanPhase.Ready ? (
+    <StandardPage<VMData>
+      {...commonProps}
+      GlobalActionToolbarItems={[() => <PlanVMsEditButton plan={plan} />]}
+    />
+  ) : (
+    <StandardPageWithSelection<VMData>
+      {...commonProps}
+      GlobalActionToolbarItems={
+        [
+          ({ selectedIds }) => <PlanVMsDeleteButton selectedIds={selectedIds || []} plan={plan} />,
+        ] as PageGlobalActions
+      }
       canSelect={canSelect}
       onSelect={onSelect}
       selectedIds={initialSelectedIds}
-      GlobalActionToolbarItems={actions}
     />
   );
 };

@@ -70,10 +70,7 @@ export const PlanCreatePage: FC<{ namespace: string }> = ({ namespace }) => {
     namespace: namespace || projectName,
   });
 
-  const selectedProvider =
-    filterState.selectedProviderUID !== ''
-      ? findProviderByID(filterState.selectedProviderUID, providers)
-      : undefined;
+  const selectedProvider = findProviderByID(filterState.selectedProviderUID, providers);
 
   // Init Create migration plan form state
   const [state, dispatch, emptyContext] = useFetchEffects({

@@ -1,5 +1,6 @@
-import React, { ReactNode, useReducer, useState } from 'react';
+import React, { useState } from 'react';
 import { isPlanEditable } from 'src/modules/Plans/utils';
+import { patchPlanMappingsData } from 'src/modules/Plans/utils';
 import { InventoryNetwork } from 'src/modules/Providers/hooks/useNetworks';
 import { InventoryStorage } from 'src/modules/Providers/hooks/useStorages';
 import { useForkliftTranslation } from 'src/utils/i18n';
@@ -33,18 +34,18 @@ import {
 } from '@patternfly/react-core';
 import Pencil from '@patternfly/react-icons/dist/esm/icons/pencil-alt-icon';
 
-import { Mapping, MappingList } from '../../components';
 import {
   canDeleteAndPatchPlanHooks,
-  hasPlanMappingsChanged,
   hasSomeCompleteRunningVMs,
   mapSourceNetworksIdsToLabels,
   mapSourceStoragesIdsToLabels,
   mapTargetNetworksIdsToLabels,
   mapTargetStoragesLabelsToIds,
-  patchPlanMappingsData,
   POD_NETWORK,
 } from '../../utils';
+import { Mapping, MappingList } from '..';
+
+import { PlanMappingsSectionState } from './types';
 
 /**
  * Represents the state (edit/view) of the Plan mappings section.
@@ -56,15 +57,8 @@ import {
  * @property {V1beta1NetworkMapSpecMap[]} updatedNetwork - The new version of the Plan Network Maps being edited.
  * @property {V1beta1StorageMapSpecMap[]} updatedStorage - The new version of the Plan Storage Maps being edited.
  */
-interface PlanMappingsSectionState {
-  edit: boolean;
-  dataChanged: boolean;
-  alertMessage: ReactNode;
-  updatedNetwork: V1beta1NetworkMapSpecMap[];
-  updatedStorage: V1beta1StorageMapSpecMap[];
-}
 
-export type PlanMappingsSectionProps = {
+type PlanMappingsSectionProps = {
   plan: V1beta1Plan;
   planNetworkMaps: V1beta1NetworkMap;
   planStorageMaps: V1beta1StorageMap;
@@ -72,6 +66,11 @@ export type PlanMappingsSectionProps = {
   targetNetworks: OpenShiftNetworkAttachmentDefinition[];
   sourceStorages: InventoryStorage[];
   targetStorages: OpenShiftStorageClass[];
+  planMappingsState?: PlanMappingsSectionState;
+  planMappingsDispatch?: React.Dispatch<{
+    type: string;
+    payload?;
+  }>;
 };
 
 export const PlanMappingsSection: React.FC<PlanMappingsSectionProps> = ({
@@ -82,84 +81,14 @@ export const PlanMappingsSection: React.FC<PlanMappingsSectionProps> = ({
   targetNetworks,
   sourceStorages,
   targetStorages,
+  planMappingsState: state,
+  planMappingsDispatch: dispatch,
 }) => {
   const { t } = useForkliftTranslation();
-
-  const initialState: PlanMappingsSectionState = {
-    edit: false,
-    dataChanged: false,
-    alertMessage: null,
-    updatedNetwork: planNetworkMaps?.spec?.map,
-    updatedStorage: planStorageMaps?.spec?.map,
-  };
 
   const [isLoading, setIsLoading] = useState(false);
   const [isAddNetworkMapAvailable, setIsAddNetworkMapAvailable] = useState(true);
   const [isAddStorageMapAvailable, setIsAddStorageMapAvailable] = useState(true);
-  const [state, dispatch] = useReducer(reducer, initialState);
-
-  function reducer(
-    state: PlanMappingsSectionState,
-    action: { type: string; payload? },
-  ): PlanMappingsSectionState {
-    switch (action.type) {
-      case 'TOGGLE_EDIT': {
-        return { ...state, edit: !state.edit };
-      }
-      case 'SET_CANCEL': {
-        const dataChanged = false;
-
-        return {
-          ...state,
-          dataChanged,
-          alertMessage: null,
-          updatedNetwork: planNetworkMaps?.spec?.map,
-          updatedStorage: planStorageMaps?.spec?.map,
-        };
-      }
-      case 'SET_ALERT_MESSAGE': {
-        return { ...state, alertMessage: action.payload };
-      }
-      case 'ADD_NETWORK_MAPPING':
-      case 'DELETE_NETWORK_MAPPING':
-      case 'REPLACE_NETWORK_MAPPING': {
-        const updatedNetwork = action.payload.newState;
-        const dataChanged = hasPlanMappingsChanged(
-          planNetworkMaps?.spec?.map,
-          planStorageMaps?.spec?.map,
-          updatedNetwork,
-          state?.updatedStorage,
-        );
-
-        return {
-          ...state,
-          dataChanged,
-          alertMessage: null,
-          updatedNetwork,
-        };
-      }
-      case 'ADD_STORAGE_MAPPING':
-      case 'DELETE_STORAGE_MAPPING':
-      case 'REPLACE_STORAGE_MAPPING': {
-        const updatedStorage = action.payload.newState;
-        const dataChanged = hasPlanMappingsChanged(
-          planNetworkMaps?.spec?.map,
-          planStorageMaps?.spec?.map,
-          state?.updatedNetwork,
-          updatedStorage,
-        );
-
-        return {
-          ...state,
-          dataChanged,
-          alertMessage: null,
-          updatedStorage,
-        };
-      }
-      default:
-        return state;
-    }
-  }
 
   // Toggles between view and edit modes
   function onToggleEdit() {
